@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contracts & Attendance - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+            <span class="sidebar-brand-text">Job Finder</span>
+        </div>
+        <hr>
+        <ul class="nav flex-column" id="sidebarNav"></ul>
+        <div class="nav-item mt-4">
+            <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+        </div>
+    </div>
+
+        <!-- Main Content -->
+    <div class="main-content" style="margin-left: 250px; flex: 1;">
+        <!-- Mobile Top Bar -->
+        <div class="mobile-top-bar">
+            <button class="btn-menu" aria-label="Menu" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-brand"><i class="fas fa-briefcase"></i> Job Finder</div>
+            <div class="mobile-user" style="opacity:0"><i class="fas fa-bars"></i></div>
+        </div>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()" id="sidebarOverlay"></div>
+        <div class="role-toggle-header">
+            <div class="toggle-container">
+                <span class="toggle-label active" id="currentRoleLabel">
+                    <i class="fas fa-user-shield"></i> 
+                    <span id="currentRoleText">Loading...</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="welcome-section animate-fade-in-up">
+            <h2><i class="fas fa-file-contract text-gradient me-2"></i>Contracts & Attendance</h2>
+            <p id="pageSubtext">Manage your work contracts and track attendance</p>
+        </div>
+
+        <div id="contractsContainer">
+            <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Loading contracts...</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Display Modal (Employer) -->
+<div class="modal-overlay" id="qrDisplayModal">
+    <div class="modal-content" style="max-width: 420px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-qrcode me-2 text-gradient"></i>QR Code</h3>
+            <button class="modal-close" onclick="closeQrModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 2rem; text-align: center;">
+            <p class="text-muted mb-3">Show this QR code to employees to mark attendance</p>
+            <div id="qrImageContainer"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+            <p class="text-muted small mt-3"><i class="fas fa-info-circle me-1"></i>QR refreshes after each scan for security</p>
+        </div>
+    </div>
+</div>
+
+<!-- QR Scanner Modal (Employee) -->
+<div class="modal-overlay" id="qrScanModal">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-camera me-2 text-gradient"></i>Scan QR Code</h3>
+            <button class="modal-close" onclick="closeScanModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p class="text-muted mb-3 text-center">Point your camera at the employer's QR code</p>
+            <div id="qrReader" style="width: 100%; border-radius: 12px; overflow: hidden;"></div>
+            <div id="scanResult" class="mt-3 text-center" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Records Modal -->
+<div class="modal-overlay" id="attendanceModal">
+    <div class="modal-content" style="max-width: 560px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-calendar-check me-2 text-gradient"></i>Attendance Records</h3>
+            <button class="modal-close" onclick="closeAttendanceModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 1.5rem;" id="attendanceContent"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-flag me-2" style="color: #dc2626;"></i>Report User</h3>
+            <button class="modal-close" onclick="closeReportModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="report-form-body">
+            <div class="form-group">
+                <label><i class="fas fa-exclamation-triangle me-1"></i>Reason</label>
+                <select id="reportReason">
+                    <option value="">Select a reason...</option>
+                    <option value="Fraudulent listing">Fraudulent listing</option>
+                    <option value="Misleading information">Misleading information</option>
+                    <option value="Harassment">Harassment</option>
+                    <option value="Unprofessional behavior">Unprofessional behavior</option>
+                    <option value="Payment issues">Payment issues</option>
+                    <option value="Unsafe work conditions">Unsafe work conditions</option>
+                    <option value="Discrimination">Discrimination</option>
+                    <option value="No-show / Unreliable">No-show / Unreliable</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-pen me-1"></i>Description</label>
+                <textarea id="reportDescription" rows="4" placeholder="Provide details about your report..."></textarea>
+            </div>
+        </div>
+        <div class="report-form-actions">
+            <button class="btn-report-cancel" onclick="closeReportModal()">Cancel</button>
+            <button class="btn-report-submit" id="reportSubmitBtn" onclick="submitContractReport()">
+                <i class="fas fa-paper-plane me-1"></i>Submit Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/roleManager.js"></script>
+<script>
+    if (!requireAuth()) { /* redirected */ }
+
+    let html5QrCode = null;
+
+    // ─── Load contracts ──────────────────────────────────
+    async function loadContracts() {
+        const container = document.getElementById('contractsContainer');
+        const role = getCurrentRole();
+
+        try {
+            if (role === 'employer') {
+                await loadEmployerContracts(container);
+            } else {
+                await loadEmployeeContracts(container);
+            }
+        } catch (err) {
+            console.error('Load contracts error:', err);
+            container.innerHTML = '<p class="text-center text-danger">Failed to load contracts.</p>';
+        }
+    }
+
+    // ─── EMPLOYER VIEW: grouped by job with employee table ───
+    async function loadEmployerContracts(container) {
+        const data = await apiGet('/tokens/employer');
+        const jobs = data.jobs || [];
+
+        if (jobs.length === 0) {
+            container.innerHTML = `
+                <div class="rec-empty" style="margin-top:2rem;">
+                    <i class="fas fa-file-contract"></i>
+                    <p>No contracts yet. Accept job applications to create contracts.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = jobs.map((job, i) => {
+            const resignBadge = job.allow_resignation
+                ? '<span class="contract-mode-badge online" style="font-size:0.7rem;"><i class="fas fa-door-open"></i> Resign Allowed</span>'
+                : '<span class="contract-mode-badge offline" style="font-size:0.7rem;"><i class="fas fa-lock"></i> No Resign</span>';
+
+            const employeeRows = job.employees.map(emp => {
+                const statusBadge = emp.participation_status === 'resigned'
+                    ? '<span class="emp-status-badge resigned"><i class="fas fa-door-open"></i> Resigned</span>'
+                    : '<span class="emp-status-badge active"><i class="fas fa-check-circle"></i> Active</span>';
+                const todayBadge = emp.today_present
+                    ? '<span class="emp-attendance-badge present"><i class="fas fa-check"></i> Present</span>'
+                    : '<span class="emp-attendance-badge absent"><i class="fas fa-times"></i> Absent</span>';
+                return `<tr>
+                    <td><strong>${emp.employee_name}</strong><br><small class="text-muted">${emp.employee_email}</small></td>
+                    <td class="text-center">${statusBadge}</td>
+                    <td class="text-center">${todayBadge}</td>
+                    <td class="text-center"><span class="fw-bold">${emp.total_attendance}</span></td>
+                    <td class="text-center">
+                        <button class="btn-contract-action attendance-view btn-sm" onclick="viewAttendance(${emp.contract_id})"><i class="fas fa-list"></i></button>
+                        <button class="btn-contract-action report-btn btn-sm" onclick="openReportModal(${emp.employee_id}, ${job.job_id}, ${emp.contract_id})" title="Report"><i class="fas fa-flag"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <div class="contract-card animate-fade-in-up delay-${(i % 4) + 1}">
+                <div class="contract-card-top">
+                    <div class="contract-badges">${resignBadge}</div>
+                    <span class="contract-date"><i class="fas fa-users me-1"></i>${job.employees.length} Employee${job.employees.length !== 1 ? 's' : ''}</span>
+                </div>
+                <h4 class="contract-title">${job.job_title}</h4>
+                <div class="contract-parties" style="padding: 0.7rem 1rem;">
+                    <div class="contract-party"><i class="fas fa-map-marker-alt"></i><div><span class="party-label">Location</span><span class="party-name">${job.job_location || 'Remote'}</span></div></div>
+                    <div class="contract-party"><i class="fas fa-indian-rupee-sign"></i><div><span class="party-label">Salary</span><span class="party-name">₹${job.salary}/day</span></div></div>
+                    ${job.start_time && job.end_time ? `<div class="contract-party"><i class="fas fa-clock"></i><div><span class="party-label">Timing</span><span class="party-name">${formatTime(job.start_time)} - ${formatTime(job.end_time)}</span></div></div>` : ''}
+                </div>
+
+                <div class="employee-table-wrap mt-3">
+                    <table class="employee-table">
+                        <thead><tr>
+                            <th>Employee</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Today</th>
+                            <th class="text-center">Days</th>
+                            <th class="text-center">View</th>
+                        </tr></thead>
+                        <tbody>${employeeRows}</tbody>
+                    </table>
+                </div>
+
+                <div class="contract-actions">
+                    <button class="btn-contract-action qr-gen" onclick="generateQR(${job.job_id})"><i class="fas fa-qrcode me-1"></i>Generate QR for Job</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── EMPLOYEE VIEW: personal contracts with actions ──────
+    async function loadEmployeeContracts(container) {
+        const data = await apiGet('/tokens/mine');
+        const contracts = data.contracts || [];
+
+        if (contracts.length === 0) {
+            container.innerHTML = `
+                <div class="rec-empty" style="margin-top:2rem;">
+                    <i class="fas fa-file-contract"></i>
+                    <p>No contracts yet. Apply for jobs and get accepted to see contracts here.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = contracts.map((c, i) => {
+            const isResigned = c.participation_status === 'resigned';
+            const statusBadge = isResigned
+                ? '<span class="contract-status-badge cancelled"><i class="fas fa-door-open"></i> Resigned</span>'
+                : '<span class="contract-status-badge active"><i class="fas fa-check-circle"></i> Active</span>';
+
+            const date = new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            let actionButtons = '';
+            if (!isResigned && c.status === 'active') {
+                actionButtons += `<button class="btn-contract-action qr-scan" onclick="openScanner()"><i class="fas fa-camera me-1"></i>Scan QR</button>`;
+            }
+
+            if (c.today_marked) {
+                actionButtons += `<span class="btn-contract-action" style="background: #d1fae5; color: #059669; cursor: default;"><i class="fas fa-check-circle me-1"></i>Today ✓</span>`;
+            }
+
+            actionButtons += `<button class="btn-contract-action attendance-view" onclick="viewAttendance(${c.contract_id})"><i class="fas fa-calendar-check me-1"></i>History (${c.attendance_count || 0})</button>`;
+
+            // Resign button — only if allowed and not already resigned
+            if (!isResigned && c.allow_resignation && c.status === 'active') {
+                actionButtons += `<button class="btn-contract-action resign-btn" onclick="resignFromJob(${c.contract_id}, '${c.job_title.replace(/'/g, "\\'")}')"><i class="fas fa-door-open me-1"></i>Resign</button>`;
+            }
+
+            // Report button
+            actionButtons += `<button class="btn-contract-action report-btn" onclick="openReportModal(${c.employer_id}, ${c.job_id}, ${c.contract_id})"><i class="fas fa-flag me-1"></i>Report</button>`;
+
+            return `
+            <div class="contract-card animate-fade-in-up delay-${(i % 4) + 1} ${isResigned ? 'resigned-card' : ''}">
+                <div class="contract-card-top">
+                    <div class="contract-badges">${statusBadge}</div>
+                    <span class="contract-date"><i class="fas fa-clock me-1"></i>${date}</span>
+                </div>
+                <h4 class="contract-title">${c.job_title}</h4>
+                <div class="contract-parties">
+                    <div class="contract-party"><i class="fas fa-building"></i><div><span class="party-label">Employer</span><span class="party-name">${c.company_name || c.employer_name}</span></div></div>
+                    <div class="contract-divider"><i class="fas fa-handshake"></i></div>
+                    <div class="contract-party"><i class="fas fa-map-marker-alt"></i><div><span class="party-label">Location</span><span class="party-name">${c.job_location || 'Remote'}</span></div></div>
+                    <div class="contract-party"><i class="fas fa-indian-rupee-sign"></i><div><span class="party-label">Salary</span><span class="party-name">₹${c.salary}/day</span></div></div>
+                    ${c.start_time && c.end_time ? `<div class="contract-party"><i class="fas fa-clock"></i><div><span class="party-label">Timing</span><span class="party-name">${formatTime(c.start_time)} - ${formatTime(c.end_time)}</span></div></div>` : ''}
+                    <div class="contract-party"><i class="fas fa-users"></i><div><span class="party-label">Team Size</span><span class="party-name">${c.total_employees} employee${c.total_employees !== 1 ? 's' : ''}</span></div></div>
+                </div>
+                ${c.skills_required ? `<div class="rec-skills mt-2">${c.skills_required.split(',').slice(0,4).map(s => `<span class="skill-tag">${s.trim()}</span>`).join('')}</div>` : ''}
+                <div class="contract-actions">${actionButtons}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── QR Generation (Employer — per job) ──────────────
+    async function generateQR(jobId) {
+        document.getElementById('qrDisplayModal').classList.add('active');
+        document.getElementById('qrImageContainer').innerHTML = '<i class="fas fa-spinner fa-spin fa-2x"></i>';
+        try {
+            const data = await apiPost('/tokens/job/' + jobId + '/qr', {});
+            document.getElementById('qrImageContainer').innerHTML = `<img src="${data.qr_data_url}" alt="QR Code" style="max-width:280px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);">`;
+        } catch (err) {
+            document.getElementById('qrImageContainer').innerHTML = `<p class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${err.error || 'Failed to generate QR'}</p>`;
+        }
+    }
+
+    function closeQrModal() { document.getElementById('qrDisplayModal').classList.remove('active'); }
+
+    // ─── QR Scanner (Employee — sends to /attendance/scan) ──
+    function openScanner() {
+        document.getElementById('qrScanModal').classList.add('active');
+        document.getElementById('scanResult').style.display = 'none';
+        document.getElementById('scanResult').innerHTML = '';
+
+        setTimeout(() => {
+            html5QrCode = new Html5Qrcode("qrReader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess,
+                () => {}
+            ).catch(err => {
+                document.getElementById('scanResult').style.display = 'block';
+                document.getElementById('scanResult').innerHTML = `<p class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>Camera error: ${err}</p>`;
+            });
+        }, 300);
+    }
+
+    async function onScanSuccess(decodedText) {
+        if (html5QrCode) { try { await html5QrCode.stop(); } catch(e) {} }
+
+        const resultDiv = document.getElementById('scanResult');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
+
+        try {
+            const payload = JSON.parse(decodedText);
+            // Send to the new shared scan endpoint
+            const data = await apiPost('/tokens/attendance/scan', { job_id: payload.job_id, token: payload.token });
+            resultDiv.innerHTML = `<div class="scan-success"><i class="fas fa-check-circle"></i><p>${data.message}</p><p class="small text-muted">Date: ${data.date}</p></div>`;
+            setTimeout(() => { closeScanModal(); loadContracts(); }, 2000);
+        } catch (err) {
+            resultDiv.innerHTML = `<div class="scan-error"><i class="fas fa-times-circle"></i><p>${err.error || 'Invalid QR code'}</p></div>`;
+        }
+    }
+
+    function closeScanModal() {
+        if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} html5QrCode = null; }
+        document.getElementById('qrScanModal').classList.remove('active');
+    }
+
+
+    // ─── Resign from job ─────────────────────────────────
+    async function resignFromJob(contractId, jobTitle) {
+        const confirmed = await confirmAction(`Are you sure you want to resign from "${jobTitle}"? This action cannot be undone.`);
+        if (!confirmed) return;
+        try {
+            const data = await apiPost('/tokens/' + contractId + '/resign', {});
+            showToast(data.message, 'success');
+            loadContracts();
+        } catch (err) {
+            showToast(err.error || 'Failed to resign', 'error');
+        }
+    }
+
+    // ─── Attendance Records Modal ────────────────────────
+    async function viewAttendance(contractId) {
+        document.getElementById('attendanceModal').classList.add('active');
+        const content = document.getElementById('attendanceContent');
+        content.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+
+        try {
+            const data = await apiGet('/tokens/' + contractId + '/attendance');
+            const records = data.attendance || [];
+
+            if (records.length === 0) {
+                content.innerHTML = '<div class="text-center py-4"><i class="fas fa-calendar-times fa-3x text-muted mb-3" style="display:block;"></i><p class="text-muted">No attendance records yet.</p></div>';
+                return;
+            }
+
+            content.innerHTML = `
+                <div class="attendance-summary mb-3">
+                    <span class="attendance-count"><i class="fas fa-check-circle me-1"></i>${records.length} day${records.length !== 1 ? 's' : ''} attended</span>
+                </div>
+                <div class="attendance-list">
+                    ${records.map(r => `
+                        <div class="attendance-row">
+                            <div class="attendance-date"><i class="fas fa-calendar-day me-2"></i>${new Date(r.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                            <span class="attendance-method ${r.method}"><i class="fas fa-qrcode me-1"></i>QR Scan</span>
+                        </div>
+                    `).join('')}
+                </div>`;
+        } catch (err) {
+            content.innerHTML = '<p class="text-center text-danger">Failed to load attendance records.</p>';
+        }
+    }
+
+    function closeAttendanceModal() { document.getElementById('attendanceModal').classList.remove('active'); }
+
+    // ─── Report functions ────────────────────────────────
+    let reportTarget = { reported_id: null, job_id: null, contract_id: null };
+
+    function openReportModal(reportedId, jobId, contractId) {
+        reportTarget = { reported_id: reportedId, job_id: jobId, contract_id: contractId };
+        document.getElementById('reportReason').value = '';
+        document.getElementById('reportDescription').value = '';
+        document.getElementById('reportModal').classList.add('active');
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.remove('active');
+    }
+
+    async function submitContractReport() {
+        const reason = document.getElementById('reportReason').value;
+        const description = document.getElementById('reportDescription').value;
+
+        if (!reason) {
+            showToast('Please select a reason for the report.', 'error');
+            return;
+        }
+
+        const confirmed = await confirmAction('Are you sure you want to submit this report?');
+        if (!confirmed) return;
+
+        const btn = document.getElementById('reportSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting...';
+
+        try {
+            const data = await apiPost('/reports', {
+                reported_id: reportTarget.reported_id,
+                job_id: reportTarget.job_id,
+                contract_id: reportTarget.contract_id,
+                reason,
+                description
+            });
+            showToast(data.message, 'success');
+            closeReportModal();
+        } catch (err) {
+            showToast(err.error || 'Failed to submit report', 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Submit Report';
+    }
+
+    // ─── Init ────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        const role = getCurrentRole();
+        const roleText = document.getElementById('currentRoleText');
+        if (roleText) roleText.textContent = role === 'employer' ? 'Employer Mode' : 'Job Seeker Mode';
+        const subtext = document.getElementById('pageSubtext');
+        if (subtext) subtext.textContent = role === 'employer'
+            ? 'View contracts, employee attendance, and manage QR codes'
+            : 'View your work contracts, mark attendance, and manage participation';
+        loadContracts();
+    });
+</script>
+</body>
+</html>

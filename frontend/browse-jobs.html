@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Jobs - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+            <span class="sidebar-brand-text">Job Finder</span>
+        </div>
+        <hr>
+        <ul class="nav flex-column" id="sidebarNav"></ul>
+        <div class="nav-item mt-4">
+            <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+        </div>
+    </div>
+
+        <!-- Main Content -->
+    <div class="main-content" style="margin-left: 250px; flex: 1;">
+        <!-- Mobile Top Bar -->
+        <div class="mobile-top-bar">
+            <button class="btn-menu" aria-label="Menu" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-brand"><i class="fas fa-briefcase"></i> Job Finder</div>
+            <div class="mobile-user" style="opacity:0"><i class="fas fa-bars"></i></div>
+        </div>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()" id="sidebarOverlay"></div>
+        <div class="role-toggle-header">
+            <div class="toggle-container">
+                <span class="toggle-label active" id="currentRoleLabel">
+                    <i class="fas fa-user-shield"></i> 
+                    <span id="currentRoleText">Loading...</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="welcome-section animate-fade-in-up">
+            <h2>Browse Jobs</h2>
+            <p>Discover part-time opportunities near you</p>
+        </div>
+
+        <!-- Search & Filter Section -->
+        <div class="search-filter-section">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search jobs by title or keyword..." onkeyup="filterJobs()">
+            </div>
+            <div class="filter-group">
+                <select class="form-select form-select-premium" id="categoryFilter" onchange="filterJobs()">
+                    <option value="All">All Categories</option>
+                    <option value="Food & Beverage">Food & Beverage</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Events">Events</option>
+                    <option value="Delivery">Delivery</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Education">Education</option>
+                    <option value="Hospitality">Hospitality</option>
+                </select>
+                <input type="text" class="form-control form-control-premium" id="locationFilter" placeholder="Target Location..." autocomplete="off">
+            </div>
+        </div>
+
+        <!-- Recommended For You Section (employee only) -->
+        <div id="recSection" style="display:none;">
+            <div class="section-header mt-2 mb-2">
+                <h3 class="section-title"><i class="fas fa-magic text-gradient me-2"></i>Recommended For You</h3>
+            </div>
+            <div class="rec-horizontal-scroll" id="recJobsRow">
+                <div class="recommendation-loading"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Finding matches...</p></div>
+            </div>
+        </div>
+
+        <div class="results-count mb-3"><span id="jobCount">0</span> jobs found</div>
+
+        <!-- Job Cards Grid -->
+        <div class="jobs-grid" id="jobsGrid">
+            <div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Loading jobs...</p></div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/roleManager.js"></script>
+<script>
+    if (!requireAuth()) { /* redirected */ }
+
+    let allJobs = [];
+
+    function getBadgeClass(jobType) {
+        const type = (jobType || '').toLowerCase();
+        if (type.includes('part')) return 'badge-part-time';
+        if (type.includes('temp')) return 'badge-temporary';
+        if (type.includes('intern')) return 'badge-internship';
+        return 'badge-part-time';
+    }
+
+    function renderJobs(jobs) {
+        const grid = document.getElementById('jobsGrid');
+        document.getElementById('jobCount').textContent = jobs.length;
+
+        if (jobs.length === 0) {
+            grid.innerHTML = `<div class="text-center p-5"><i class="fas fa-search fa-3x text-muted mb-3"></i><h4>No jobs found</h4><p>Try adjusting your search or filters</p></div>`;
+            return;
+        }
+
+        grid.innerHTML = jobs.map((job, i) => {
+            const company = job.company_name || job.employer_name || 'Company';
+            const initials = company.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+            return `
+                <div class="job-card animate-fade-in-up delay-${(i % 4) + 1}">
+                    <span class="job-type-badge ${getBadgeClass(job.job_type)}">${job.job_type || 'Part-time'}</span>
+                    <h5>${job.title}</h5>
+                    <div class="company-info">
+                        <div class="company-icon">${initials}</div>
+                        <span class="company-name">${company}</span>
+                    </div>
+                    <div class="job-details">
+                        <div class="detail-item"><i class="fas fa-calendar-alt"></i><span>${job.job_date || 'TBA'}${(job.end_date && job.end_date !== job.job_date) ? ' to ' + job.end_date : ''}</span></div>
+                        <div class="detail-item"><i class="fas fa-map-marker-alt"></i><span>${job.location || 'N/A'}</span></div>
+                        <div class="detail-item"><i class="fas fa-clock"></i><span>${job.start_time && job.end_time ? formatTime(job.start_time) + ' - ' + formatTime(job.end_time) : (job.duration || job.job_type)}</span></div>
+                    </div>
+                    <div class="salary-badge"><i class="fas fa-indian-rupee-sign"></i> ${job.salary}/day</div>
+                    <a href="job-details.html?job_id=${job.job_id}" class="apply-btn">View Details <i class="fas fa-arrow-right ms-2"></i></a>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function loadJobs() {
+        try {
+            const { jobs } = await apiGet('/jobs');
+            allJobs = jobs;
+            renderJobs(jobs);
+        } catch (err) {
+            console.error('Load jobs error:', err);
+            document.getElementById('jobsGrid').innerHTML = '<p class="text-center text-danger">Failed to load jobs. Please try again later.</p>';
+        }
+    }
+
+    function filterJobs() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const category = document.getElementById('categoryFilter').value;
+        const location = document.getElementById('locationFilter').value;
+
+        let filtered = allJobs;
+        if (search) {
+            filtered = filtered.filter(j => j.title.toLowerCase().includes(search) || (j.description && j.description.toLowerCase().includes(search)));
+        }
+        if (category !== 'All') {
+            filtered = filtered.filter(j => j.category_name === category);
+        }
+        if (location) {
+            filtered = filtered.filter(j => j.location && j.location.toLowerCase().includes(location.toLowerCase()));
+        }
+        renderJobs(filtered);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const role = getCurrentRole();
+        const roleText = document.getElementById('currentRoleText');
+        if (roleText) {
+            roleText.textContent = role === 'employer' ? 'Employer Mode' : 'Job Seeker Mode';
+        }
+        updateSidebar();
+        loadJobs();
+        setupLocationAutocomplete('locationFilter', filterJobs);
+
+        // Load recommendations for employees
+        if (role === 'employee') {
+            document.getElementById('recSection').style.display = 'block';
+            loadBrowseRecommendations();
+        }
+    });
+
+    function getBrowseBadgeClass(jobType) {
+        const type = (jobType || '').toLowerCase();
+        if (type.includes('part')) return 'badge-part-time';
+        if (type.includes('temp')) return 'badge-temporary';
+        if (type.includes('intern')) return 'badge-internship';
+        return 'badge-part-time';
+    }
+
+    async function loadBrowseRecommendations() {
+        const row = document.getElementById('recJobsRow');
+        try {
+            const { recommendations } = await apiGet('/recommendations/jobs?limit=6');
+            if (!recommendations || recommendations.length === 0) {
+                document.getElementById('recSection').style.display = 'none';
+                return;
+            }
+            row.innerHTML = recommendations.map(job => {
+                const company = job.company_name || job.employer_name || 'Company';
+                const initials = company.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+                const scoreColor = job.score >= 70 ? '#10b981' : job.score >= 40 ? '#f59e0b' : '#6366f1';
+                return `
+                    <div class="rec-scroll-card">
+                        <div class="rec-card-header">
+                            <span class="job-type-badge ${getBrowseBadgeClass(job.job_type)}">${job.job_type || 'Part-time'}</span>
+                            ${job.score > 0 ? `<span class="match-score" style="background:${scoreColor}">${job.score}% match</span>` : ''}
+                        </div>
+                        <h5 class="rec-card-title">${job.title}</h5>
+                        <div class="company-info"><div class="company-icon">${initials}</div><span class="company-name">${company}</span></div>
+                        <div class="rec-card-details">
+                            <div class="detail-item"><i class="fas fa-map-marker-alt"></i><span>${job.location || 'N/A'}</span></div>
+                            <div class="detail-item"><i class="fas fa-indian-rupee-sign"></i><span>\u20b9${job.salary}/day</span></div>
+                        </div>
+                        <a href="job-details.html?job_id=${job.job_id}" class="apply-btn">View <i class="fas fa-arrow-right ms-1"></i></a>
+                    </div>
+                `;
+            }).join('');
+        } catch (e) {
+            console.error('Browse recommendations error:', e);
+            document.getElementById('recSection').style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>

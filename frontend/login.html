@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Role Selection Modal */
+        .role-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .role-modal-overlay.active { display: flex; }
+        .role-modal {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 36px 32px;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+            animation: scaleIn 0.35s ease;
+        }
+        @keyframes scaleIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .role-modal h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+        .role-modal p {
+            color: #64748b;
+            margin-bottom: 28px;
+            font-size: 0.95rem;
+        }
+        .role-option {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: left;
+        }
+        .role-option:hover { border-color: #6366f1; background: #f8fafc; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(99,102,241,0.12); }
+        .role-option-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: #fff;
+            flex-shrink: 0;
+        }
+        .role-option-icon.seeker { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .role-option-icon.employer { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+        .role-option-label h5 { margin: 0; font-weight: 600; font-size: 1.05rem; color: #1e293b; }
+        .role-option-label span { color: #94a3b8; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <!-- Background Shapes -->
+    <div class="hero-shapes">
+        <div class="hero-shape hero-shape-1"></div>
+        <div class="hero-shape hero-shape-2"></div>
+    </div>
+
+    <div class="login-card animate-scale-in">
+        <div class="login-header">
+            <div class="login-icon">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <h2 class="login-title">Welcome Back</h2>
+            <p class="login-subtitle">Sign in to continue to your dashboard</p>
+        </div>
+
+        <form onsubmit="login(); return false;">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email Address</label>
+                <input type="email" id="loginEmail" class="form-control form-control-premium" placeholder="Enter your email" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Password</label>
+                <input type="password" id="loginPassword" class="form-control form-control-premium" placeholder="Enter your password" required>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="remember">
+                    <label class="form-check-label text-muted" for="remember">Remember me</label>
+                </div>
+                <a href="#" class="text-primary text-decoration-none fw-semibold">Forgot Password?</a>
+            </div>
+
+            <button type="submit" id="loginBtn" class="btn btn-primary w-100 py-3">
+                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+            </button>
+        </form>
+
+        <div id="loginError" style="display:none; color:#dc3545; background:#fff5f5; border:1px solid #f5c6cb; border-radius:8px; padding:12px 16px; margin-top:16px; text-align:center; font-weight:500; font-size:0.97rem;"></div>
+
+        <div class="text-center mt-4">
+            <p class="text-muted mb-0">Don't have an account? 
+                <a href="register.html" class="text-primary fw-semibold text-decoration-none">Sign Up</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Role Selection Modal (shown when user has both roles) -->
+<div class="role-modal-overlay" id="roleSelectionModal">
+    <div class="role-modal">
+        <h3><i class="fas fa-user-shield me-2"></i>Select Your Role</h3>
+        <p>You have multiple roles. Choose which mode to use:</p>
+        <div class="role-option" id="roleOptionEmployee" onclick="selectLoginRole('employee')">
+            <div class="role-option-icon seeker"><i class="fas fa-user-tie"></i></div>
+            <div class="role-option-label">
+                <h5>Job Seeker</h5>
+                <span>Browse and apply for jobs</span>
+            </div>
+        </div>
+        <div class="role-option" id="roleOptionEmployer" onclick="selectLoginRole('employer')">
+            <div class="role-option-icon employer"><i class="fas fa-building"></i></div>
+            <div class="role-option-label">
+                <h5>Employer</h5>
+                <span>Post jobs and manage applicants</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+let pendingLoginData = null;
+
+async function login() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+    const errorDiv = document.getElementById('loginError');
+
+    // Hide any previous error message
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing In...';
+    
+    try {
+        const data = await apiPost('/auth/login', { email, password });
+
+        // Store basic auth data
+        sessionStorage.setItem('authToken', data.token);
+        sessionStorage.setItem('userId', data.user.user_id);
+        sessionStorage.setItem('userName', data.user.name);
+
+        const rolesStr = data.user.roles || data.user.role;
+        const rolesArr = rolesStr.split(',').filter(Boolean);
+
+        if (rolesArr.length > 1) {
+            // User has multiple roles — show role selection modal
+            pendingLoginData = data;
+            document.getElementById('roleSelectionModal').classList.add('active');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+        } else {
+            // Single role — go directly to dashboard
+            sessionStorage.setItem('currentView', data.user.role);
+            sessionStorage.setItem('userRole', data.user.role);
+            sessionStorage.setItem('userRoles', rolesStr);
+            window.location.href = 'dashboard.html';
+        }
+    } catch (err) {
+        errorDiv.textContent = err.error || err.message || 'Login failed. Please try again.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+    }
+}
+
+async function selectLoginRole(role) {
+    if (!pendingLoginData) return;
+
+    try {
+        // Switch to the selected role (issues new JWT)
+        const switchData = await apiPost('/auth/switch-role', { role });
+        sessionStorage.setItem('authToken', switchData.token);
+        sessionStorage.setItem('userRole', switchData.user.role);
+        sessionStorage.setItem('currentView', switchData.user.role);
+        sessionStorage.setItem('userRoles', switchData.user.roles || switchData.user.role);
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        // If switch fails, use original login data with original role
+        sessionStorage.setItem('currentView', pendingLoginData.user.role);
+        sessionStorage.setItem('userRole', pendingLoginData.user.role);
+        sessionStorage.setItem('userRoles', pendingLoginData.user.roles || pendingLoginData.user.role);
+        window.location.href = 'dashboard.html';
+    }
+}
+</script>
+
+</body>
+</html>

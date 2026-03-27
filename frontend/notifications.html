@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+            <span class="sidebar-brand-text">Job Finder</span>
+        </div>
+        <hr>
+        <ul class="nav flex-column" id="sidebarNav"></ul>
+        <div class="nav-item mt-4">
+            <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+        </div>
+    </div>
+
+        <!-- Main Content -->
+    <div class="main-content" style="margin-left: 250px; flex: 1;">
+        <!-- Mobile Top Bar -->
+        <div class="mobile-top-bar">
+            <button class="btn-menu" aria-label="Menu" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-brand"><i class="fas fa-briefcase"></i> Job Finder</div>
+            <div class="mobile-user" style="opacity:0"><i class="fas fa-bars"></i></div>
+        </div>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()" id="sidebarOverlay"></div>
+        <div class="role-toggle-header">
+            <div class="toggle-container">
+                <span class="toggle-label active" id="currentRoleLabel">
+                    <i class="fas fa-user-shield"></i> 
+                    <span id="currentRoleText">Loading...</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="welcome-section animate-fade-in-up d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-bell text-gradient me-2"></i>Notifications</h2>
+                <p>Stay updated with your activity</p>
+            </div>
+            <button onclick="markAllRead()" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-check-double me-1"></i>Mark All Read
+            </button>
+        </div>
+
+        <!-- Tabs for employee: Notifications / Job Offers -->
+        <div class="notif-tabs mb-3" id="notifTabs" style="display:none;">
+            <button class="notif-tab active" onclick="switchTab('notifications')" id="tabNotif"><i class="fas fa-bell me-1"></i>Notifications</button>
+            <button class="notif-tab" onclick="switchTab('offers')" id="tabOffers"><i class="fas fa-envelope-open me-1"></i>Job Offers <span id="offerBadge" class="badge bg-danger ms-1" style="display:none;">0</span></button>
+        </div>
+
+        <div id="notificationsContainer">
+            <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Loading notifications...</p></div>
+        </div>
+
+        <div id="offersContainer" style="display:none;">
+            <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Loading job offers...</p></div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/roleManager.js"></script>
+<script>
+    if (!requireAuth()) { /* redirected */ }
+
+    let currentTab = 'notifications';
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tabNotif').classList.toggle('active', tab === 'notifications');
+        document.getElementById('tabOffers').classList.toggle('active', tab === 'offers');
+        document.getElementById('notificationsContainer').style.display = tab === 'notifications' ? 'block' : 'none';
+        document.getElementById('offersContainer').style.display = tab === 'offers' ? 'block' : 'none';
+        if (tab === 'offers') loadOffers();
+    }
+
+    async function loadNotifications() {
+        const container = document.getElementById('notificationsContainer');
+        try {
+            const { notifications } = await apiGet('/notifications');
+            if (notifications.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                        <h4>No notifications yet</h4>
+                        <p class="text-muted">You'll see activity notifications here</p>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = notifications.map((n, i) => `
+                <div class="card shadow-sm border-0 mb-2 ${!n.is_read ? 'border-start border-primary border-3' : ''} animate-fade-in-up delay-${(i % 4) + 1}">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-start">
+                        <div class="d-flex gap-3 align-items-start">
+                            <div class="mt-1">
+                                <i class="fas fa-${!n.is_read ? 'circle-dot text-primary' : 'circle text-muted'}" style="font-size:0.7rem;"></i>
+                            </div>
+                            <div>
+                                <p class="mb-1 ${!n.is_read ? 'fw-semibold' : ''}">${n.message}</p>
+                                <small class="text-muted"><i class="fas fa-clock me-1"></i>${new Date(n.created_at).toLocaleString()}</small>
+                            </div>
+                        </div>
+                        ${!n.is_read ? `
+                            <button onclick="markRead(${n.notification_id}, this)" class="btn btn-sm btn-outline-secondary ms-2" title="Mark as read">
+                                <i class="fas fa-check"></i>
+                            </button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            container.innerHTML = '<p class="text-center text-danger">Failed to load notifications</p>';
+        }
+    }
+
+    async function loadOffers() {
+        const container = document.getElementById('offersContainer');
+        container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+        try {
+            const { offers } = await apiGet('/notifications/offers');
+
+            if (!offers || offers.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-envelope-open fa-3x text-muted mb-3" style="display:block;"></i>
+                        <h4>No job offers</h4>
+                        <p class="text-muted">Job offers from employers will appear here</p>
+                    </div>`;
+                return;
+            }
+
+            // Count pending
+            const pendingCount = offers.filter(o => o.status === 'pending').length;
+            const badge = document.getElementById('offerBadge');
+            if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'inline'; }
+            else { badge.style.display = 'none'; }
+
+            container.innerHTML = offers.map((o, i) => {
+                const date = new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                const company = o.company_name || o.employer_name;
+
+                let statusUI = '';
+                if (o.status === 'pending') {
+                    statusUI = `
+                        <div class="offer-actions mt-3">
+                            <button class="btn btn-success btn-sm me-2" onclick="respondOffer(${o.offer_id}, 'accept')">
+                                <i class="fas fa-check me-1"></i>Accept
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="respondOffer(${o.offer_id}, 'decline')">
+                                <i class="fas fa-times me-1"></i>Decline
+                            </button>
+                        </div>`;
+                } else if (o.status === 'accepted') {
+                    statusUI = `<div class="mt-2"><span class="emp-status-badge active"><i class="fas fa-check-circle"></i> Accepted</span>
+                        <small class="text-muted ms-2">${o.responded_at ? new Date(o.responded_at).toLocaleDateString() : ''}</small></div>`;
+                } else {
+                    statusUI = `<div class="mt-2"><span class="emp-status-badge resigned"><i class="fas fa-times-circle"></i> Declined</span>
+                        <small class="text-muted ms-2">${o.responded_at ? new Date(o.responded_at).toLocaleDateString() : ''}</small></div>`;
+                }
+
+                return `
+                <div class="contract-card animate-fade-in-up delay-${(i % 4) + 1} ${o.status !== 'pending' ? 'resigned-card' : ''}" style="margin-bottom:1rem;">
+                    <div class="contract-card-top">
+                        <span class="contract-mode-badge ${o.status === 'pending' ? 'online' : 'offline'}" style="font-size:0.75rem;">
+                            <i class="fas fa-${o.status === 'pending' ? 'clock' : o.status === 'accepted' ? 'check-circle' : 'times-circle'}"></i> 
+                            ${o.status.charAt(0).toUpperCase() + o.status.slice(1)}
+                        </span>
+                        <span class="contract-date"><i class="fas fa-clock me-1"></i>${date}</span>
+                    </div>
+                    <h4 class="contract-title">${o.job_title}</h4>
+                    <div class="contract-parties" style="padding: 0.5rem 1rem;">
+                        <div class="contract-party"><i class="fas fa-building"></i><div><span class="party-label">Employer</span><span class="party-name">${company}</span></div></div>
+                        <div class="contract-party"><i class="fas fa-map-marker-alt"></i><div><span class="party-label">Location</span><span class="party-name">${o.job_location || 'N/A'}</span></div></div>
+                        <div class="contract-party"><i class="fas fa-indian-rupee-sign"></i><div><span class="party-label">Salary</span><span class="party-name">₹${o.salary}/day</span></div></div>
+                    </div>
+                    ${o.job_description ? `<p class="text-muted small px-3 mt-1 mb-1">${o.job_description.substring(0, 150)}${o.job_description.length > 150 ? '...' : ''}</p>` : ''}
+                    ${o.skills_required ? `<div class="rec-skills px-3">${o.skills_required.split(',').slice(0,4).map(s => '<span class="skill-tag">' + s.trim() + '</span>').join('')}</div>` : ''}
+                    ${o.message ? `<div class="px-3 mt-2"><div style="background:rgba(99,102,241,0.05); border-radius:8px; padding:0.6rem 1rem; border-left:3px solid #6366f1;"><i class="fas fa-quote-left text-primary me-1" style="font-size:0.7rem;"></i><span class="small">${o.message}</span></div></div>` : ''}
+                    <div class="px-3 pb-1">${statusUI}</div>
+                </div>`;
+            }).join('');
+        } catch (err) {
+            container.innerHTML = '<p class="text-center text-danger">Failed to load job offers</p>';
+        }
+    }
+
+    async function respondOffer(offerId, action) {
+        const label = action === 'accept' ? 'accept this offer and join the job' : 'decline this offer';
+        const confirmed = await confirmAction(`Are you sure you want to ${label}?`);
+        if (!confirmed) return;
+        try {
+            const data = await apiPost('/notifications/offers/' + offerId + '/respond', { action });
+            showToast(data.message, 'success');
+            loadOffers();
+        } catch (err) {
+            showToast(err.error || 'Failed to respond to offer', 'error');
+        }
+    }
+
+    async function markRead(id) {
+        try {
+            await apiPut('/notifications/' + id + '/read', {});
+            loadNotifications();
+        } catch (err) {
+            showToast('Failed to mark as read', 'error');
+        }
+    }
+
+    async function markAllRead() {
+        try {
+            await apiPut('/notifications/read-all', {});
+            showToast('All notifications marked as read', 'success');
+            loadNotifications();
+        } catch (err) {
+            showToast('Failed to mark all as read', 'error');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        const role = getCurrentRole();
+        const roleText = document.getElementById('currentRoleText');
+        if (roleText) roleText.textContent = role === 'employer' ? 'Employer Mode' : 'Job Seeker Mode';
+
+        // Show tabs only for employees (job seekers)
+        if (role === 'employee') {
+            document.getElementById('notifTabs').style.display = 'flex';
+            // Check for pending offers count
+            try {
+                const { offers } = await apiGet('/notifications/offers');
+                const pendingCount = (offers || []).filter(o => o.status === 'pending').length;
+                const badge = document.getElementById('offerBadge');
+                if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'inline'; }
+            } catch(e) {}
+        }
+
+        loadNotifications();
+    });
+</script>
+
+<style>
+    .notif-tabs {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0 1rem;
+    }
+    .notif-tab {
+        padding: 10px 20px;
+        border: none;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 0.88rem;
+        color: var(--text-light);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .notif-tab:hover { background: rgba(99, 102, 241, 0.08); color: var(--text-primary); }
+    .notif-tab.active {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .offer-actions { display: flex; gap: 0.5rem; }
+    .stat-mini { text-align: center; }
+</style>
+</body>
+</html>

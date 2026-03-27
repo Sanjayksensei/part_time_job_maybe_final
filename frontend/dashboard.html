@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+            <span class="sidebar-brand-text">Job Finder</span>
+        </div>
+        <hr>
+        <ul class="nav flex-column" id="sidebarNav"></ul>
+        <div class="nav-item mt-4">
+            <button onclick="logout()" class="btn-logout">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </button>
+        </div>
+    </div>
+
+        <!-- Main Content -->
+    <div class="main-content" style="margin-left: 250px; flex: 1;">
+        <!-- Mobile Top Bar -->
+        <div class="mobile-top-bar">
+            <button class="btn-menu" aria-label="Menu" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-brand"><i class="fas fa-briefcase"></i> Job Finder</div>
+            <div class="mobile-user" style="opacity:0"><i class="fas fa-bars"></i></div>
+        </div>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()" id="sidebarOverlay"></div>
+        <!-- Role Indicator Bar -->
+        <div class="role-toggle-header">
+            <div class="toggle-container">
+                <span class="toggle-label active" id="currentRoleLabel">
+                    <i class="fas fa-user-shield"></i> 
+                    <span id="currentRoleText">Loading...</span>
+                </span>
+            </div>
+        </div>
+
+        <div id="jobSeekerUI">
+            <div class="welcome-section animate-fade-in-up">
+                <h2>Welcome back! <span id="userName">User</span></h2>
+                <p>Find your perfect part-time job today</p>
+            </div>
+
+            <!-- Trending Jobs Section -->
+            <div class="carousel-section">
+                <div class="section-header">
+                    <h3 class="section-title"><i class="fas fa-fire text-gradient me-2"></i>Trending Jobs</h3>
+                    <a href="browse-jobs.html" class="btn btn-primary">View All <i class="fas fa-arrow-right ms-2"></i></a>
+                </div>
+                <div class="carousel-container">
+                    <button class="carousel-btn prev" onclick="moveCarousel(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <div class="carousel-wrapper">
+                        <div class="carousel-track" id="carouselTrack"></div>
+                    </div>
+                    <button class="carousel-btn next" onclick="moveCarousel(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="slider-indicators" id="sliderIndicators"></div>
+            </div>
+
+            <!-- Stats Section -->
+            <div class="stats-grid">
+                <div class="stat-card reveal animate-fade-in-up delay-1">
+                    <h5><i class="fas fa-briefcase me-2"></i>Total Jobs</h5>
+                    <h3 id="totalJobs">0</h3>
+                    <div class="icon"><i class="fas fa-briefcase"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-2">
+                    <h5><i class="fas fa-coins me-2"></i>Active Tokens</h5>
+                    <h3 id="activeTokens">0</h3>
+                    <div class="icon"><i class="fas fa-coins"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-3">
+                    <h5><i class="fas fa-star me-2"></i>Trust Score</h5>
+                    <h3><span class="text-gradient" id="trustScore">0</span> ⭐</h3>
+                    <div class="icon"><i class="fas fa-star"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-4">
+                    <h5><i class="fas fa-check-circle me-2"></i>Applications</h5>
+                    <h3 id="totalApplications">0</h3>
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                </div>
+            </div>
+
+            <!-- Recommended Jobs Section -->
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-magic text-gradient me-2"></i>Recommended For You</h3>
+                <a href="browse-jobs.html" class="btn btn-outline-primary btn-sm">See All <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="recommendation-grid" id="recommendedJobsGrid">
+                <div class="recommendation-loading">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p>Finding your best matches...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMPLOYER UI -->
+        <div id="employerUI" style="display: none;">
+            <div class="welcome-section animate-fade-in-up employer-welcome">
+                <div class="welcome-content">
+                    <h2>Employer Dashboard <span id="employerName"></span></h2>
+                    <p>Manage your job listings and find the best candidates</p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+                    <button class="btn btn-outline-light" onclick="window.location.href='employer-jobs.html'" style="border: 2px solid rgba(255,255,255,0.5); font-weight: 600;"><i class="fas fa-list me-2"></i>Jobs Posted</button>
+                    <button class="btn-post-job btn-auto-width" onclick="openPostJobModal()"><i class="fas fa-plus"></i> Post Job</button>
+                </div>
+            </div>
+
+            <!-- Employer Stats -->
+            <div class="stats-grid">
+                <div class="stat-card reveal animate-fade-in-up delay-1">
+                    <h5><i class="fas fa-briefcase me-2"></i>Active Jobs</h5>
+                    <h3 id="employerActiveJobs">0</h3>
+                    <div class="icon"><i class="fas fa-briefcase"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-2">
+                    <h5><i class="fas fa-users me-2"></i>Total Applicants</h5>
+                    <h3 id="employerApplicants">0</h3>
+                    <div class="icon"><i class="fas fa-users"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-3">
+                    <h5><i class="fas fa-check-circle me-2"></i>Hired</h5>
+                    <h3 id="employerHired">0</h3>
+                    <div class="icon"><i class="fas fa-user-check"></i></div>
+                </div>
+                <div class="stat-card reveal animate-fade-in-up delay-4">
+                    <h5><i class="fas fa-star me-2"></i>Trust Score</h5>
+                    <div class="trust-score-display">
+                        <h3><span class="text-gradient" id="employerTrustScore">0</span></h3>
+                        <div class="trust-bar"><div class="trust-fill" id="employerTrustFill" style="width: 0%"></div></div>
+                    </div>
+                    <div class="icon"><i class="fas fa-shield-alt"></i></div>
+                </div>
+            </div>
+
+            <!-- Employer Profile Section -->
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-user-circle text-gradient me-2"></i>Employer Profile</h3>
+            </div>
+            <div class="employer-profile-card" id="employerProfileCard">
+                <div class="profile-header-content">
+                    <div class="employer-avatar"><i class="fas fa-building"></i></div>
+                    <div class="employer-info">
+                        <h4 id="epCompanyName">Loading...</h4>
+                        <p class="employer-company" id="epIndustry"></p>
+                        <div class="employer-meta">
+                            <span id="epLocation"><i class="fas fa-map-marker-alt"></i> </span>
+                            <span id="epEmail"><i class="fas fa-envelope"></i> </span>
+                            <span id="epPhone"><i class="fas fa-phone"></i> </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="employer-about">
+                    <h5>About Us</h5>
+                    <p id="epDescription">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Employer Reviews Section -->
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-star text-gradient me-2"></i>Employee Reviews</h3>
+            </div>
+            <div class="reviews-grid" id="employerReviewsGrid">
+                <p class="text-muted">Loading reviews...</p>
+            </div>
+
+            <!-- Previous Workers Section -->
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-users text-gradient me-2"></i>Previous Workers</h3>
+            </div>
+            <div class="recommendation-grid" id="previousWorkersGrid">
+                <div class="recommendation-loading">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p>Loading your workers...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Worker Detail Modal -->
+<div class="modal-overlay" id="workerDetailModal">
+    <div class="modal-content" style="max-width: 640px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-user me-2 text-gradient"></i>Worker Profile</h3>
+            <button class="modal-close" onclick="closeWorkerDetail()"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 1.5rem;" id="workerDetailContent">
+            <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+        </div>
+    </div>
+</div>
+
+<!-- Post Job Modal -->
+<div class="modal-overlay" id="postJobModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-plus-circle me-2"></i>Post New Job</h3>
+            <button class="modal-close" onclick="closePostJobModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="postJobForm" onsubmit="submitJob(event)">
+            <div class="form-group">
+                <label class="form-label">Job Title *</label>
+                <input type="text" class="form-control form-control-premium" id="jobTitle" placeholder="e.g. Kitchen Assistant">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Job Type *</label>
+                    <select class="form-select form-select-premium" id="jobType">
+                        <option value="">Select job type</option>
+                        <option value="part-time">Part-time</option>
+                        <option value="full-time">Full-time</option>
+                        <option value="temporary">Temporary</option>
+                        <option value="internship">Internship</option>
+                        <option value="contract">Contract</option>
+                        <option value="freelance">Freelance</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select form-select-premium" id="jobCategory">
+                        <option value="">Select category</option>
+                        <option value="1">Food &amp; Beverage</option>
+                        <option value="2">Retail</option>
+                        <option value="3">Events</option>
+                        <option value="4">Delivery</option>
+                        <option value="5">Technology</option>
+                        <option value="6">Healthcare</option>
+                        <option value="7">Education</option>
+                        <option value="8">Hospitality</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <input type="text" class="form-control form-control-premium" id="jobLocation" placeholder="e.g. Kochi, Kerala">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Salary per Day (₹) *</label>
+                    <input type="number" class="form-control form-control-premium" id="jobSalary" placeholder="e.g. 800" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Start Date *</label>
+                    <input type="date" class="form-control form-control-premium" id="jobDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date *</label>
+                    <input type="date" class="form-control form-control-premium" id="endDate" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Start Time *</label>
+                    <input type="time" class="form-control form-control-premium" id="jobStartTime" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Time *</label>
+                    <input type="time" class="form-control form-control-premium" id="jobEndTime" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Skills Required</label>
+                <input type="text" class="form-control form-control-premium" id="jobSkills" placeholder="e.g. Communication, Customer Service">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Job Description *</label>
+                <textarea class="form-control form-control-premium" id="jobDescription" rows="3" placeholder="Describe the job responsibilities and requirements"></textarea>
+            </div>
+            <div class="form-group">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="allowResignation" checked>
+                    <label class="form-check-label" for="allowResignation">
+                        <i class="fas fa-door-open me-1"></i>Allow employees to resign from this job
+                    </label>
+                </div>
+                <small class="text-muted">If unchecked, employees won't be able to resign once accepted</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label"><i class="fas fa-users me-1"></i>Number of Workers Required *</label>
+                <input type="number" class="form-control form-control-premium" id="jobMaxWorkers" placeholder="e.g. 5" min="1">
+                <small class="text-muted">Maximum number of job seekers who can be hired for this job</small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closePostJobModal()"><i class="fas fa-times me-2"></i>Cancel</button>
+                <button type="submit" class="btn btn-primary" id="postJobBtn"><i class="fas fa-paper-plane me-2"></i>Post Job</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Animation -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-content">
+        <div class="success-icon"><i class="fas fa-check"></i></div>
+        <h3>Job Posted Successfully!</h3>
+        <p>Your job listing is now live</p>
+    </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/roleManager.js"></script>
+<script>
+    // Auth guard
+    if (!requireAuth()) { /* redirected */ }
+
+    let jobsData = [];
+    const cardsPerSlide = 4;
+    let currentSlide = 0;
+    let autoSlideInterval;
+
+    function getBadgeClass(jobType) {
+        const type = (jobType || '').toLowerCase();
+        if (type.includes('part')) return 'badge-part-time';
+        if (type.includes('temp')) return 'badge-temporary';
+        if (type.includes('intern')) return 'badge-internship';
+        return 'badge-part-time';
+    }
+
+    function getCompanyInitials(company) {
+        return (company || 'NA').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    }
+
+    function createJobCard(job) {
+        const company = job.company_name || job.employer_name || 'Company';
+        return `
+            <div class="job-card">
+                <span class="job-type-badge ${getBadgeClass(job.job_type)}">${job.job_type || 'Part-time'}</span>
+                <h5>${job.title}</h5>
+                <div class="company-info">
+                    <div class="company-icon">${getCompanyInitials(company)}</div>
+                    <span class="company-name">${company}</span>
+                </div>
+                <div class="job-details">
+                    <div class="detail-item"><i class="fas fa-map-marker-alt"></i><span>${job.location || 'N/A'}</span></div>
+                    <div class="detail-item"><i class="fas fa-clock"></i><span>${job.start_time && job.end_time ? formatTime(job.start_time) + ' - ' + formatTime(job.end_time) : (job.duration || job.job_type)}</span></div>
+                </div>
+                <div class="salary-badge"><i class="fas fa-indian-rupee-sign"></i> ${job.salary}/day</div>
+                <a href="job-details.html?job_id=${job.job_id}" class="apply-btn">View Details <i class="fas fa-arrow-right ms-2"></i></a>
+            </div>
+        `;
+    }
+
+    function createCarouselSlides() {
+        const track = document.getElementById('carouselTrack');
+        const indicators = document.getElementById('sliderIndicators');
+        if (!track || jobsData.length === 0) return;
+
+        const totalSlides = Math.ceil(jobsData.length / cardsPerSlide);
+        let slidesHTML = '', indicatorsHTML = '';
+
+        for (let i = 0; i < totalSlides; i++) {
+            const slideJobs = jobsData.slice(i * cardsPerSlide, (i + 1) * cardsPerSlide);
+            slidesHTML += `<div class="carousel-slide ${i === 0 ? 'active' : ''}">${slideJobs.map(j => createJobCard(j)).join('')}</div>`;
+            indicatorsHTML += `<button class="slider-indicator ${i === 0 ? 'active' : ''}" onclick="goToSlide(${i})"></button>`;
+        }
+
+        track.innerHTML = slidesHTML;
+        indicators.innerHTML = indicatorsHTML;
+    }
+
+    function moveCarousel(dir) {
+        const slides = document.querySelectorAll('.carousel-slide');
+        const track = document.getElementById('carouselTrack');
+        currentSlide += dir;
+        if (currentSlide < 0) currentSlide = slides.length - 1;
+        else if (currentSlide >= slides.length) currentSlide = 0;
+        slides.forEach((s, i) => s.classList.toggle('active', i === currentSlide));
+        track.style.transform = `translateX(-${currentSlide * 100}%)`;
+        updateIndicators();
+        resetAutoSlide();
+    }
+
+    function goToSlide(i) {
+        const slides = document.querySelectorAll('.carousel-slide');
+        const track = document.getElementById('carouselTrack');
+        currentSlide = i;
+        slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+        track.style.transform = `translateX(-${i * 100}%)`;
+        updateIndicators();
+        resetAutoSlide();
+    }
+
+    function updateIndicators() {
+        document.querySelectorAll('.slider-indicator').forEach((ind, i) => ind.classList.toggle('active', i === currentSlide));
+    }
+
+    function startAutoSlide() { autoSlideInterval = setInterval(() => moveCarousel(1), 5000); }
+    function resetAutoSlide() { clearInterval(autoSlideInterval); startAutoSlide(); }
+
+    function initScrollReveal() {
+        const reveals = document.querySelectorAll('.reveal');
+        window.addEventListener('scroll', () => {
+            reveals.forEach(el => {
+                if (el.getBoundingClientRect().top < window.innerHeight - 100) el.classList.add('active');
+            });
+        });
+        window.dispatchEvent(new Event('scroll'));
+    }
+
+    // Load dashboard data from API
+    async function loadDashboardData() {
+        const role = getCurrentRole();
+        const userName = sessionStorage.getItem('userName') || 'User';
+
+        if (role === 'employer') {
+            document.getElementById('jobSeekerUI').style.display = 'none';
+            document.getElementById('employerUI').style.display = 'block';
+            document.getElementById('employerName').textContent = userName;
+
+            try {
+                const stats = await apiGet('/dashboard/employer');
+                document.getElementById('employerActiveJobs').textContent = stats.active_jobs;
+                document.getElementById('employerApplicants').textContent = stats.total_applicants;
+                document.getElementById('employerHired').textContent = stats.hired;
+                document.getElementById('employerTrustScore').textContent = stats.trust_score;
+                document.getElementById('employerTrustFill').style.width = (stats.trust_score / 5 * 100) + '%';
+            } catch (e) { console.error('Dashboard stats error:', e); }
+
+            // Load employer profile
+            try {
+                const { user, profile } = await apiGet('/profile');
+                document.getElementById('epCompanyName').textContent = profile.company_name || user.name;
+                document.getElementById('epIndustry').textContent = profile.industry || '';
+                document.getElementById('epLocation').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${profile.company_location || user.location || ''}`;
+                document.getElementById('epEmail').innerHTML = `<i class="fas fa-envelope"></i> ${user.email}`;
+                document.getElementById('epPhone').innerHTML = `<i class="fas fa-phone"></i> ${user.phone || ''}`;
+                document.getElementById('epDescription').textContent = profile.company_description || '';
+            } catch (e) { console.error('Profile error:', e); }
+
+            // Load employer reviews
+            try {
+                const { reviews } = await apiGet('/reviews/received');
+                const grid = document.getElementById('employerReviewsGrid');
+                if (reviews.length === 0) {
+                    grid.innerHTML = '<p class="text-muted">No reviews yet</p>';
+                } else {
+                    grid.innerHTML = reviews.map(r => `
+                        <div class="review-card">
+                            <div class="review-header">
+                                <div class="reviewer-avatar">${(r.reviewer_name||'').split(' ').map(w=>w[0]).join('').substring(0,2)}</div>
+                                <div class="reviewer-info">
+                                    <h5>${r.reviewer_name}</h5>
+                                    <div class="review-rating">${'<i class="fas fa-star"></i>'.repeat(r.rating)}${'<i class="fas fa-star" style="color:#cbd5e1"></i>'.repeat(5 - r.rating)}</div>
+                                </div>
+                            </div>
+                            <p class="review-text">"${r.comment}"</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.error('Reviews error:', e); }
+
+            // Load previous workers
+            loadPreviousWorkers();
+
+        } else {
+            document.getElementById('jobSeekerUI').style.display = 'block';
+            document.getElementById('employerUI').style.display = 'none';
+            document.getElementById('userName').textContent = userName;
+
+            try {
+                const stats = await apiGet('/dashboard/job-seeker');
+                document.getElementById('totalJobs').textContent = stats.total_jobs;
+                document.getElementById('activeTokens').textContent = stats.active_tokens;
+                document.getElementById('trustScore').textContent = stats.trust_score;
+                document.getElementById('totalApplications').textContent = stats.applications_count;
+            } catch (e) { console.error('Dashboard stats error:', e); }
+
+            // Load jobs for carousel
+            try {
+                const { jobs } = await apiGet('/jobs');
+                jobsData = jobs;
+                createCarouselSlides();
+                startAutoSlide();
+            } catch (e) { console.error('Jobs error:', e); }
+
+            // Load recommended jobs
+            loadRecommendedJobs();
+        }
+    }
+
+    // ───── Recommendation Rendering Functions ─────
+
+    function getScoreColor(score) {
+        if (score >= 70) return '#10b981';
+        if (score >= 40) return '#f59e0b';
+        return '#6366f1';
+    }
+
+    function createRecJobCard(job, index) {
+        const company = job.company_name || job.employer_name || 'Company';
+        const initials = company.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        const scoreColor = getScoreColor(job.score);
+        return `
+            <div class="rec-card animate-fade-in-up delay-${(index % 4) + 1}">
+                <div class="rec-card-header">
+                    <span class="job-type-badge ${getBadgeClass(job.job_type)}">${job.job_type || 'Part-time'}</span>
+                    ${job.score > 0 ? `<span class="match-score" style="background: ${scoreColor}">${job.score}% match</span>` : ''}
+                </div>
+                <h5 class="rec-card-title">${job.title}</h5>
+                <div class="company-info">
+                    <div class="company-icon">${initials}</div>
+                    <span class="company-name">${company}</span>
+                </div>
+                <div class="rec-card-details">
+                    <div class="detail-item"><i class="fas fa-map-marker-alt"></i><span>${job.location || 'N/A'}</span></div>
+                    <div class="detail-item"><i class="fas fa-indian-rupee-sign"></i><span>₹${job.salary}/day</span></div>
+                </div>
+                ${job.skills_required ? `<div class="rec-skills">${job.skills_required.split(',').slice(0,3).map(s => `<span class="skill-tag">${s.trim()}</span>`).join('')}</div>` : ''}
+                <a href="job-details.html?job_id=${job.job_id}" class="view-details-btn">View Details <i class="fas fa-arrow-right"></i></a>
+            </div>
+        `;
+    }
+
+    function createWorkerCard(emp, index) {
+        const initials = (emp.name || 'NA').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        const stars = Math.round(emp.avg_rating || 0);
+        return `
+            <div class="previous-worker-card animate-fade-in-up delay-${(index % 4) + 1}" onclick="openWorkerDetail(${emp.user_id})">
+                <div class="pwc-header">
+                    <div class="pwc-avatar-wrapper">
+                        <div class="pwc-avatar">${initials}</div>
+                    </div>
+                    <div class="pwc-badges">
+                        <span class="pwc-badge contracts"><i class="fas fa-briefcase"></i> ${emp.contracts_count} contract${emp.contracts_count !== 1 ? 's' : ''}</span>
+                        ${emp.avg_rating > 0 ? `<span class="pwc-badge rating"><i class="fas fa-star"></i> ${Number(emp.avg_rating).toFixed(1)}</span>` : ''}
+                    </div>
+                </div>
+                
+                <div class="pwc-body">
+                    <h4 class="pwc-name">${emp.name}</h4>
+                    ${emp.last_job_title ? `<p class="pwc-role"><i class="fas fa-history me-1"></i> Last: <span>${emp.last_job_title}</span></p>` : ''}
+                    
+                    <div class="pwc-details">
+                        <div class="pwc-detail-item" title="Location"><i class="fas fa-map-marker-alt"></i> ${emp.location || 'N/A'}</div>
+                        <div class="pwc-detail-item" title="Experience"><i class="fas fa-calendar-check"></i> ${emp.total_days_worked} days</div>
+                    </div>
+
+                    ${emp.skills ? `<div class="pwc-skills">${emp.skills.split(',').slice(0,3).map(s => `<span class="pwc-skill">${s.trim()}</span>`).join('')}</div>` : ''}
+                </div>
+
+                <div class="pwc-footer">
+                    <button class="pwc-btn primary" onclick="event.stopPropagation(); openWorkerDetail(${emp.user_id})">
+                        <i class="fas fa-user-circle me-1"></i> View Profile
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    async function loadPreviousWorkers() {
+        const grid = document.getElementById('previousWorkersGrid');
+        try {
+            const { workers } = await apiGet('/notifications/previous-workers');
+            if (!workers || workers.length === 0) {
+                grid.innerHTML = '<div class="rec-empty"><i class="fas fa-users"></i><p>No previous workers yet. Accept applications to build your team history!</p></div>';
+                return;
+            }
+            grid.innerHTML = workers.map((emp, i) => createWorkerCard(emp, i)).join('');
+        } catch (e) {
+            console.error('Previous workers error:', e);
+            grid.innerHTML = '<div class="rec-empty"><i class="fas fa-exclamation-circle"></i><p>Could not load previous workers.</p></div>';
+        }
+    }
+
+    async function openWorkerDetail(userId) {
+        document.getElementById('workerDetailModal').classList.add('active');
+        const content = document.getElementById('workerDetailContent');
+        content.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+
+        try {
+            const data = await apiGet('/notifications/worker/' + userId + '/detail');
+            const p = data.profile;
+            const initials = (p.name || 'NA').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+            const stars = Math.round(data.rating.avg || 0);
+
+            // Load employer's jobs for the offer dropdown
+            let jobOptions = '';
+            try {
+                const { jobs } = await apiGet('/jobs/employer/mine');
+                jobOptions = (jobs || []).map(j => `<option value="${j.job_id}">${j.title}</option>`).join('');
+            } catch(e) {}
+
+            const historyRows = (data.history || []).map(h => `
+                <tr>
+                    <td><strong>${h.job_title}</strong></td>
+                    <td>${h.job_location || 'N/A'}</td>
+                    <td class="text-center">₹${h.salary}/day</td>
+                    <td class="text-center">${h.days_attended}</td>
+                    <td class="text-center"><span class="emp-status-badge ${h.participation_status}">${h.participation_status}</span></td>
+                </tr>
+            `).join('');
+
+            content.innerHTML = `
+                <div class="text-center mb-3">
+                    <div class="rec-employee-avatar hired" style="width:70px;height:70px;font-size:1.5rem;margin:0 auto;">${initials}</div>
+                    <h4 class="mt-2 mb-0">${p.name}</h4>
+                    <p class="text-muted mb-1"><i class="fas fa-envelope me-1"></i>${p.email} ${p.phone ? '&bull; <i class="fas fa-phone me-1"></i>' + p.phone : ''}</p>
+                    <p class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${p.location || 'N/A'}</p>
+                    ${data.rating.avg ? `<div class="rec-stars">${'<i class="fas fa-star" style="color:#f59e0b;"></i>'.repeat(stars)}${'<i class="fas fa-star" style="color:#cbd5e1"></i>'.repeat(5 - stars)} <span class="text-muted ms-1">(${data.rating.count} reviews)</span></div>` : ''}
+                </div>
+                <div class="row text-center mb-3">
+                    <div class="col-4"><div class="stat-mini"><strong>${p.experience || 0}</strong><br><small class="text-muted">Yrs Exp</small></div></div>
+                    <div class="col-4"><div class="stat-mini"><strong>${p.education || 'N/A'}</strong><br><small class="text-muted">Education</small></div></div>
+                    <div class="col-4"><div class="stat-mini"><strong>${data.history.length}</strong><br><small class="text-muted">Contracts</small></div></div>
+                </div>
+                ${p.skills ? `<div class="rec-skills mb-3">${p.skills.split(',').map(s => '<span class="skill-tag">' + s.trim() + '</span>').join('')}</div>` : ''}
+                ${p.bio ? `<p class="text-muted small mb-3"><i class="fas fa-quote-left me-1"></i>${p.bio}</p>` : ''}
+
+                <h6 class="fw-bold mb-2"><i class="fas fa-history me-1"></i>Work History With You</h6>
+                <div class="employee-table-wrap mb-3">
+                    <table class="employee-table">
+                        <thead><tr><th>Job</th><th>Location</th><th class="text-center">Salary</th><th class="text-center">Days</th><th class="text-center">Status</th></tr></thead>
+                        <tbody>${historyRows || '<tr><td colspan="5" class="text-center text-muted">No history</td></tr>'}</tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold mb-2"><i class="fas fa-paper-plane me-1"></i>Send Job Offer</h6>
+                <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 1rem;">
+                    <select class="form-select form-select-premium mb-2" id="offerJobSelect" required>
+                        <option value="">Select a job to offer *</option>
+                        ${jobOptions}
+                    </select>
+                    <input type="text" class="form-control form-control-premium mb-2" id="offerMessage" placeholder="Add a personal message (optional)">
+                    <button class="apply-btn" style="width:100%;" onclick="sendJobOffer(${userId})"><i class="fas fa-paper-plane me-1"></i>Send Offer</button>
+                </div>
+            `;
+        } catch (err) {
+            content.innerHTML = '<p class="text-center text-danger">Failed to load worker profile.</p>';
+        }
+    }
+
+    function closeWorkerDetail() { document.getElementById('workerDetailModal').classList.remove('active'); }
+
+    async function sendJobOffer(workerId) {
+        const jobId = document.getElementById('offerJobSelect').value;
+        if (!jobId) { showToast('Please select a job to offer', 'error'); return; }
+        const message = document.getElementById('offerMessage').value.trim() || null;
+
+        const confirmed = await confirmAction('Are you sure you want to send this job offer?');
+        if (!confirmed) return;
+
+        try {
+            const data = await apiPost('/notifications/send-offer', { worker_id: workerId, job_id: parseInt(jobId), message });
+            showToast(data.message, 'success');
+            closeWorkerDetail();
+        } catch (err) {
+            showToast(err.error || 'Failed to send offer', 'error');
+        }
+    }
+
+
+
+    async function loadRecommendedJobs() {
+        const grid = document.getElementById('recommendedJobsGrid');
+        try {
+            const { recommendations } = await apiGet('/recommendations/jobs');
+            if (!recommendations || recommendations.length === 0) {
+                grid.innerHTML = '<div class="rec-empty"><i class="fas fa-search"></i><p>No recommendations yet. Update your profile and skills to get personalised suggestions!</p></div>';
+                return;
+            }
+            grid.innerHTML = recommendations.map((job, i) => createRecJobCard(job, i)).join('');
+        } catch (e) {
+            console.error('Recommended jobs error:', e);
+            grid.innerHTML = '<div class="rec-empty"><i class="fas fa-exclamation-circle"></i><p>Could not load recommendations.</p></div>';
+        }
+    }
+
+    function openPostJobModal() {
+        document.getElementById('postJobModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePostJobModal() {
+        document.getElementById('postJobModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+        document.getElementById('postJobForm').reset();
+    }
+
+    async function submitJob(event) {
+        event.preventDefault();
+        const btn = document.getElementById('postJobBtn');
+        const title = document.getElementById('jobTitle').value.trim();
+        const description = document.getElementById('jobDescription').value.trim();
+        const location = document.getElementById('jobLocation').value.trim();
+        const salary = parseFloat(document.getElementById('jobSalary').value);
+        const job_type = document.getElementById('jobType').value;
+        const category_id = document.getElementById('jobCategory').value || null;
+        const skills_required = document.getElementById('jobSkills').value.trim() || null;
+        const allow_resignation = document.getElementById('allowResignation').checked;
+        const max_workers = parseInt(document.getElementById('jobMaxWorkers').value) || null;
+        const job_date = document.getElementById('jobDate').value;
+        const end_date = document.getElementById('endDate').value;
+        const start_time = document.getElementById('jobStartTime').value;
+        const end_time = document.getElementById('jobEndTime').value;
+
+        if (!title || !description || !location || !job_type || !category_id || isNaN(salary) || !job_date || !end_date || !start_time || !end_time) {
+            showToast('Please fill all required fields correctly', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Post Job';
+            return;
+        }
+
+        if (new Date(end_date) < new Date(job_date)) {
+            showToast('End Date cannot be before Start Date', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Post Job';
+            return;
+        }
+
+        if (start_time >= end_time) {
+            showToast('Start time must be strictly before end time', 'error');
+            return;
+        }
+
+        const confirmed = await confirmAction('Are you sure you want to post this job?');
+        if (!confirmed) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Posting...';
+
+        try {
+            const { job } = await apiPost('/jobs', {
+                title,
+                description,
+                location,
+                salary,
+                job_type,
+                skills_required,
+                category_id: category_id ? parseInt(category_id) : null,
+                allow_resignation,
+                max_workers,
+                job_date,
+                end_date,
+                start_time,
+                end_time
+            });
+            closePostJobModal();
+            const overlay = document.getElementById('successOverlay');
+            overlay.classList.add('active');
+            setTimeout(() => overlay.classList.remove('active'), 2500);
+            // Refresh stats so Active Jobs count updates immediately
+            loadDashboardData();
+            showToast(`Job "${job.title}" posted successfully!`, 'success');
+        } catch (err) {
+            showToast('Failed to post job: ' + (err.error || 'Server error'), 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Post Job';
+    }
+
+    document.getElementById('postJobModal').addEventListener('click', function(e) {
+        if (e.target === this) closePostJobModal();
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Set role indicator text
+        const role = getCurrentRole();
+        const roleText = document.getElementById('currentRoleText');
+        if (roleText) {
+            roleText.textContent = role === 'employer' ? 'Employer Mode' : 'Job Seeker Mode';
+        }
+
+        updateSidebar();
+        initScrollReveal();
+        loadDashboardData();
+        setupRealLocationAutocomplete('jobLocation');
+    });
+</script>
+
+</body>
+</html>

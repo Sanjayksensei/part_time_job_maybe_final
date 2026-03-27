@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Calendar - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); }
+        .calendar-controls { display: flex; gap: 0.5rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
+        .day-header { background: var(--bg-card); padding: 1rem; text-align: center; font-weight: 600; color: var(--text-muted); font-size: 0.9rem; letter-spacing: 0.5px; }
+        .day-cell { background: var(--bg-card); min-height: 120px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; transition: background 0.2s; }
+        .day-cell:hover { background: var(--bg-secondary); }
+        .day-cell.empty { background: var(--bg-secondary); opacity: 0.6; }
+        .day-cell.today { background: rgba(99, 102, 241, 0.05); }
+        .date-num { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); align-self: flex-end; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-bottom: 0.5rem; }
+        .day-cell.today .date-num { background: var(--primary-color); color: white; }
+        .cal-job-event { background: var(--primary-light); color: var(--primary-dark); font-size: 0.75rem; padding: 0.35rem 0.5rem; border-radius: 4px; border-left: 3px solid var(--primary-color); cursor: pointer; display: block; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: background 0.2s; }
+        .cal-job-event:hover { background: rgba(99, 102, 241, 0.2); }
+        .event-time { font-size: 0.65rem; opacity: 0.8; margin-top: 2px; }
+        @media (max-width: 768px) {
+            .calendar-grid { display: flex; flex-direction: column; }
+            .day-header { display: none; }
+            .day-cell { min-height: auto; padding: 1rem; }
+            .day-cell.empty { display: none; }
+            .date-num { align-self: flex-start; margin-bottom: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+                <span class="sidebar-brand-text">Job Finder</span>
+            </div>
+            <hr>
+            <ul class="nav flex-column" id="sidebarNav"></ul>
+            <div class="nav-item mt-4">
+                <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+            </div>
+        </div>
+
+        <div class="main-content" style="margin-left: 250px; flex: 1;">
+            <div class="role-toggle-header">
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="currentRoleLabel">
+                        <i class="fas fa-user-shield"></i> <span id="currentRoleText">Calendar</span>
+                    </span>
+                </div>
+            </div>
+
+            <div style="padding: 2rem;">
+                <div class="calendar-header">
+                    <div>
+                        <h2 class="mb-1" style="font-weight: 700; color: var(--text-dark);"><i class="fas fa-calendar-alt text-primary me-2"></i>My Jobs Calendar</h2>
+                        <p class="text-muted mb-0" id="calendarSubtitle">Loading schedule...</p>
+                    </div>
+                    <div class="calendar-controls">
+                        <button class="btn btn-outline-primary" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <button class="btn btn-primary" onclick="setToday()">Today</button>
+                        <button class="btn btn-outline-primary" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <h4 id="monthYearDisplay" class="text-center mb-4" style="font-weight: 700;">Month Year</h4>
+
+                <div id="calendarLoader" class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                </div>
+                
+                <div class="calendar-grid" id="calendarGrid" style="display: none;">
+                    <div class="day-header">Sun</div>
+                    <div class="day-header">Mon</div>
+                    <div class="day-header">Tue</div>
+                    <div class="day-header">Wed</div>
+                    <div class="day-header">Thu</div>
+                    <div class="day-header">Fri</div>
+                    <div class="day-header">Sat</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/roleManager.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const token = sessionStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            updateSidebar();
+            initCalendar();
+        });
+
+        let currentDate = new Date();
+        let globalJobs = [];
+
+        async function initCalendar() {
+            try {
+                const role = getCurrentRole();
+                document.getElementById('currentRoleText').textContent = role === 'employer' ? 'Employer Schedule' : 'Job Seeker Schedule';
+                document.getElementById('calendarSubtitle').textContent = role === 'employer' ? 'View jobs scheduled for your created posts.' : 'View timings for jobs you applied to.';
+                
+                const endpoint = role === 'employer' ? '/jobs/calendar/employer' : '/jobs/calendar/employee';
+                const data = await apiGet(endpoint);
+                globalJobs = data.jobs || [];
+                
+                document.getElementById('calendarLoader').style.display = 'none';
+                document.getElementById('calendarGrid').style.display = 'grid';
+                renderCalendar();
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to load calendar data', 'error');
+            }
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('monthYearDisplay').textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            
+            const grid = document.getElementById('calendarGrid');
+            const headers = Array.from(grid.querySelectorAll('.day-header'));
+            grid.innerHTML = '';
+            headers.forEach(h => grid.appendChild(h));
+            
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="day-cell empty"></div>`;
+            }
+            
+            const validJobs = globalJobs.filter(j => j.job_date && j.end_date);
+            validJobs.sort((a, b) => {
+                const startA = new Date(a.job_date.split('T')[0]);
+                const startB = new Date(b.job_date.split('T')[0]);
+                if (startA.getTime() !== startB.getTime()) return startA - startB;
+                const durationA = new Date(a.end_date.split('T')[0]) - startA;
+                const durationB = new Date(b.end_date.split('T')[0]) - startB;
+                return durationB - durationA; 
+            });
+
+            const slots = {}; 
+            validJobs.forEach(job => {
+                const jStartStr = job.job_date.split('T')[0];
+                const jEndStr = job.end_date.split('T')[0];
+                
+                const [sYear, sMonth, sDay] = jStartStr.split('-');
+                const startDate = new Date(sYear, sMonth - 1, sDay);
+                const [eYear, eMonth, eDay] = jEndStr.split('-');
+                const endDate = new Date(eYear, eMonth - 1, eDay);
+                
+                const spanDays = [];
+                let current = new Date(startDate);
+                while(current <= endDate) {
+                    const ds = `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
+                    spanDays.push(ds);
+                    current.setDate(current.getDate() + 1);
+                }
+                
+                let slotIndex = 0;
+                while(true) {
+                    let isFree = true;
+                    for (const ds of spanDays) {
+                        if (slots[ds] && slots[ds][slotIndex]) {
+                            isFree = false; break;
+                        }
+                    }
+                    if (isFree) break;
+                    slotIndex++;
+                }
+                
+                for (const ds of spanDays) {
+                    if (!slots[ds]) slots[ds] = [];
+                    slots[ds][slotIndex] = job;
+                }
+            });
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const dayJobs = slots[cellDateStr] || [];
+                let eventsHtml = '';
+                
+                for (let i = 0; i < dayJobs.length; i++) {
+                    const j = dayJobs[i];
+                    if (!j) {
+                        eventsHtml += `<div class="cal-job-event invisible-spacer" style="height: 24px; opacity: 0; pointer-events: none; margin-bottom: 2px;">-</div>`;
+                        continue;
+                    }
+                    
+                    const jStartStr = j.job_date.split('T')[0];
+                    const jEndStr = j.end_date.split('T')[0];
+                    
+                    const isStart = cellDateStr === jStartStr;
+                    const isEnd = cellDateStr === jEndStr;
+                    
+                    let classes = ['cal-job-event'];
+                    let inlineStyle = 'height: 24px; margin-bottom: 2px; transition: background 0.2s; ';
+                    
+                    if (isStart && isEnd) {
+                        inlineStyle += 'position: relative; z-index: 5; ';
+                    } else if (isStart) {
+                        inlineStyle += 'border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: calc(-0.5rem - 1px); position: relative; z-index: 5; width: calc(100% + 0.5rem + 1px);';
+                    } else if (isEnd) {
+                        inlineStyle += 'border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; margin-left: -0.5rem; position: relative; z-index: 5; width: calc(100% + 0.5rem);';
+                    } else {
+                        inlineStyle += 'border-radius: 0; border-left: none; margin-left: -0.5rem; margin-right: calc(-0.5rem - 1px); position: relative; z-index: 5; width: calc(100% + 1rem + 1px);';
+                    }
+                    
+                    let showText = false;
+                    if (isStart) showText = true;
+                    if (new Date(year, month, day).getDay() === 0) showText = true; 
+                    
+                    let displayTitle = showText ? j.title : '&nbsp;';
+                    
+                    eventsHtml += `
+                        <div class="${classes.join(' ')}" style="${inlineStyle}" onclick="window.location.href='job-details.html?job_id=${j.job_id}'" title="${j.title}">
+                            <div class="calendar-event-title">${displayTitle}</div>
+                        </div>
+                    `;
+                }
+                
+                grid.innerHTML += `
+                    <div class="day-cell ${isToday ? 'today' : ''}">
+                        <div class="date-num">${day}</div>
+                        ${eventsHtml}
+                    </div>
+                `;
+            }
+            
+            const remainder = (firstDay + daysInMonth) % 7;
+            if (remainder > 0) {
+                for (let i = 0; i < (7 - remainder); i++) {
+                    grid.innerHTML += `<div class="day-cell empty"></div>`;
+                }
+            }
+        }
+
+        function changeMonth(dir) {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            renderCalendar();
+        }
+        
+        function setToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+    </script>
+</body>
+</html>

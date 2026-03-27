@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Posted Jobs - Part Time Job Finder</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar bg-dark text-white p-3" style="width: 250px; min-height: 100vh; position: fixed;">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-briefcase"></i></div>
+            <span class="sidebar-brand-text">Job Finder</span>
+        </div>
+        <hr>
+        <ul class="nav flex-column" id="sidebarNav"></ul>
+        <div class="nav-item mt-4">
+            <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</button>
+        </div>
+    </div>
+
+        <!-- Main Content -->
+    <div class="main-content" style="margin-left: 250px; flex: 1;">
+        <!-- Mobile Top Bar -->
+        <div class="mobile-top-bar">
+            <button class="btn-menu" aria-label="Menu" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-brand"><i class="fas fa-briefcase"></i> Job Finder</div>
+            <div class="mobile-user" style="opacity:0"><i class="fas fa-bars"></i></div>
+        </div>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()" id="sidebarOverlay"></div>
+        <div class="role-toggle-header">
+            <div class="toggle-container">
+                <span class="toggle-label active" id="currentRoleLabel">
+                    <i class="fas fa-user-shield"></i> 
+                    <span id="currentRoleText">Employer Mode</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="welcome-section animate-fade-in-up">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2>My Posted Jobs</h2>
+                    <p>Track your active and completed job listings</p>
+                </div>
+                <button class="btn pwc-btn btn-auto-width" onclick="window.location.href='dashboard.html'" style="background: rgba(255,255,255,0.2); color:white; border: 2px solid rgba(255,255,255,0.5);"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</button>
+            </div>
+        </div>
+
+        <div id="loader" class="text-center py-5">
+            <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+            <p class="mt-2 text-muted">Loading your jobs...</p>
+        </div>
+
+        <!-- Jobs Grid Container -->
+        <div id="jobsContainer" style="display: none;">
+            
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-briefcase text-gradient me-2"></i>Active Jobs (<span id="activeCount">0</span>)</h3>
+            </div>
+            <div class="jobs-grid mb-5" id="activeJobsGrid">
+                <!-- Active Jobs -->
+            </div>
+
+            <div class="section-header mt-4">
+                <h3 class="section-title"><i class="fas fa-check-circle text-success me-2"></i>Completed Jobs (<span id="completedCount">0</span>)</h3>
+            </div>
+            <div class="jobs-grid" id="completedJobsGrid">
+                <!-- Completed Jobs -->
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/roleManager.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const token = sessionStorage.getItem('authToken');
+        const role = getCurrentRole();
+        
+        if (!token || role !== 'employer') {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        updateSidebar();
+        loadMyJobs();
+    });
+
+    function getBadgeClass(jobType) {
+        const type = (jobType || '').toLowerCase();
+        if (type.includes('part')) return 'badge-part-time';
+        if (type.includes('temp')) return 'badge-temporary';
+        if (type.includes('intern')) return 'badge-internship';
+        return 'badge-part-time';
+    }
+
+    async function loadMyJobs() {
+        try {
+            // Backend natively maps `WHERE employer_id = ?` securely blocking overlaps.
+            const { jobs } = await apiGet('/jobs/employer/mine');
+            
+            const now = new Date();
+            const activeJobs = [];
+            const completedJobs = [];
+            
+            jobs.forEach(job => {
+                let isCompleted = false;
+                
+                // job.job_date is guaranteed raw string "YYYY-MM-DD" natively from DB
+                if (job.job_date && job.end_time) {
+                    const endDateTimeStr = `${job.job_date}T${job.end_time}`;
+                    const endDateTime = new Date(endDateTimeStr);
+                    if (!isNaN(endDateTime.getTime()) && endDateTime < now) {
+                        isCompleted = true; // Job schedule has physically expired
+                    }
+                } else if (job.job_date) {
+                    // Falls back to midnight expiry if time is explicitly undefined implicitly closing the night organically.
+                    const jobDate = new Date(`${job.job_date}T23:59:59`);
+                    if (!isNaN(jobDate.getTime()) && jobDate < now) {
+                        isCompleted = true;
+                    }
+                }
+                
+                if (isCompleted || job.status === 'closed') {
+                    completedJobs.push(job);
+                } else {
+                    activeJobs.push(job);
+                }
+            });
+
+            document.getElementById('activeCount').textContent = activeJobs.length;
+            document.getElementById('completedCount').textContent = completedJobs.length;
+
+            renderGrid('activeJobsGrid', activeJobs, 'No active jobs right now.');
+            renderGrid('completedJobsGrid', completedJobs, 'No completed jobs yet.');
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('jobsContainer').style.display = 'block';
+
+        } catch (err) {
+            console.error('Failed to load employer jobs:', err);
+            document.getElementById('loader').innerHTML = '<p class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load jobs securely.</p>';
+        }
+    }
+
+    function renderGrid(gridId, jobsList, emptyMsg) {
+        const grid = document.getElementById(gridId);
+        
+        if (jobsList.length === 0) {
+            grid.innerHTML = `<div class="p-4 text-center text-muted" style="grid-column: 1 / -1;"><i class="fas fa-folder-open mb-2 fa-2x"></i><p>${emptyMsg}</p></div>`;
+            return;
+        }
+        
+        grid.innerHTML = jobsList.map((job, i) => {
+            const timeStr = (job.start_time && job.end_time) ? `${formatTime(job.start_time)} - ${formatTime(job.end_time)}` : 'Time TBA';
+            
+            return `
+                <div class="job-card animate-fade-in-up delay-${(i % 4) + 1}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="job-type-badge ${getBadgeClass(job.job_type)}">${job.job_type || 'Part-time'}</span>
+                        <span class="badge ${job.status === 'open' ? 'bg-success-premium' : 'bg-secondary'}">${job.status === 'open' ? 'Open' : 'Closed'}</span>
+                    </div>
+                    <h5>${job.title}</h5>
+                    <div class="job-details mt-3">
+                        <div class="detail-item"><i class="fas fa-calendar-alt"></i><span>${job.job_date || 'N/A'}</span></div>
+                        <div class="detail-item"><i class="fas fa-clock"></i><span>${timeStr}</span></div>
+                        <div class="detail-item"><i class="fas fa-map-marker-alt"></i><span>${job.location || 'Remote'}</span></div>
+                        
+                        <div class="detail-item mt-3 w-100 p-2" style="background: rgba(99, 102, 241, 0.05); border-radius: var(--radius-sm);">
+                            <div class="d-flex justify-content-between w-100">
+                                <span><i class="fas fa-users text-primary"></i> <span class="fw-bold">${job.applicant_count || 0}</span> Applicants</span>
+                                <span><i class="fas fa-user-check text-success"></i> <span class="fw-bold">${job.hired_count || 0}</span> Hired</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="job-details.html?job_id=${job.job_id}" class="apply-btn mt-3 w-100">Manage Job <i class="fas fa-arrow-right ms-2"></i></a>
+                </div>
+            `;
+        }).join('');
+    }
+</script>
+</body>
+</html>
