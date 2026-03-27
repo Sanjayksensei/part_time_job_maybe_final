@@ -171,7 +171,7 @@ function confirmAction(message) {
 // Logout
 function logout() {
     sessionStorage.clear();
-    window.location.href = '/frontend/login.html';
+    window.location.href = 'login.html';
 }
 
 // 📱 Mobile Navigation Toggle Engine
