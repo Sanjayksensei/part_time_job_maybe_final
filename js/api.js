@@ -1,4 +1,4 @@
-const API_BASE = 'https://parttimefinal.onrender.com/api';
+const API_BASE = 'https://parttimefinal.onrender.com';
 
 function getToken() {
     return sessionStorage.getItem('authToken');
